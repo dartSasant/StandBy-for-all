@@ -187,4 +187,52 @@ for (let i = 0; i < 12; i++){
 }
 const pad = n => String(n).padStart(2,'0');
 function tick(){
-  
+  const d = new Date(), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+  const h12 = (h % 12) || 12;
+  $('#digital').textContent = `${h12}:${pad(m)}`;
+  const sp = $('#stacked').children; sp[0].textContent = pad(h12); sp[1].textContent = pad(m);
+  $('#hh').setAttribute('transform', `rotate(${(h%12)*30 + m*.5})`);
+  $('#mh').setAttribute('transform', `rotate(${m*6 + s*.1})`);
+  $('#sh').setAttribute('transform', `rotate(${s*6})`);
+  $('#date').textContent = d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
+  if (s === 0) { buildCalendar(); applyNight(); }
+}
+
+/* ---------- Calendar ---------- */
+function buildCalendar(){
+  const d = new Date(), y = d.getFullYear(), mo = d.getMonth();
+  $('#bigday').textContent = d.getDate();
+  $('#monthName').textContent = d.toLocaleDateString([], {month:'long', year:'numeric'});
+  const g = $('#grid'); g.innerHTML = '';
+  'SMTWTFS'.split('').forEach(c => g.insertAdjacentHTML('beforeend', `<div class="h">${c}</div>`));
+  const first = new Date(y, mo, 1).getDay(), days = new Date(y, mo+1, 0).getDate();
+  for (let i = 0; i < first; i++) g.insertAdjacentHTML('beforeend','<div></div>');
+  for (let n = 1; n <= days; n++)
+    g.insertAdjacentHTML('beforeend', `<div class="${n===d.getDate()?'today':''}">${n}</div>`);
+}
+
+/* ---------- Photos ---------- */
+$('#file').addEventListener('change', e => {
+  photos = [...e.target.files].map(f => URL.createObjectURL(f));
+  pi = 0; if (photos.length) { $('#photoMsg').style.display='none'; showPhoto(); go(1); }
+});
+function showPhoto(){
+  if (!photos.length) return;
+  const img = $('#photo');
+  img.classList.remove('show');
+  setTimeout(() => { img.src = photos[pi]; img.onload = () => img.classList.add('show'); }, 600);
+}
+setInterval(() => { if (photos.length > 1) { pi = (pi+1) % photos.length; showPhoto(); } }, 10000);
+
+/* ---------- Burn-in drift ---------- */
+setInterval(() => {
+  const dx = (Math.random()*24 - 12), dy = (Math.random()*24 - 12);
+  document.querySelectorAll('.inner').forEach(el => el.style.transform = `translate(${dx}px,${dy}px)`);
+}, 60000);
+
+/* ---------- Init ---------- */
+applyStyle(); applyNight(); buildCalendar(); tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
