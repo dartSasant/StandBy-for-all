@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>StandBy</title>
 <style>
-  :root { --fg:#fff; --accent:#ff9f0a; }
+  :root { --fg:#fff; --accent:#fff; }
   body.night { --fg:#d9372b; --accent:#d9372b; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; background:#000; color:var(--fg);
@@ -15,35 +15,39 @@
     overflow:hidden; user-select:none; -webkit-user-select:none; }
   #stage { position:fixed; inset:0; overflow:hidden; transition:filter 1s; }
   body.night #stage { filter:brightness(.55); }
-  #track { display:flex; height:100%; width:300%; transition:transform .4s ease; }
-  .panel { width:calc(100% / 3); height:100%; display:flex;
+  #track { display:flex; height:100%; width:200%; transition:transform .4s ease; }
+  .panel { width:50%; height:100%; display:flex;
     align-items:center; justify-content:center; position:relative; }
-  .inner { transition:transform 3s; text-align:center; }
+  .inner { transition:transform 3s; }
 
-  /* Clock */
-  #digital { font-size:26vw; font-weight:200; line-height:1; letter-spacing:-.03em; }
-  #stacked { font-size:42vh; font-weight:700; line-height:.85; display:none; }
-  #stacked span:last-child { color:var(--accent); display:block; }
-  #analog { height:88vh; width:88vh; display:none; color:var(--fg); }
+  /* Clock + calendar side by side */
+  #combo { display:flex; align-items:center; justify-content:center; gap:6vw; width:100%; }
+  #clockWrap { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+
+  #digital { font-size:min(15vw,38vh); font-weight:200; line-height:1; letter-spacing:-.03em; }
+  #stacked { font-size:min(40vh,18vw); font-weight:700; line-height:.85; display:none; }
+  #stacked span:last-child { color:var(--accent); display:block; opacity:.7; }
+  #analog { width:min(80vh,42vw); height:min(80vh,42vw); display:none; color:var(--fg); }
   .style-1 #digital { display:none; } .style-1 #stacked { display:block; }
   .style-2 #digital { display:none; } .style-2 #analog { display:block; }
-  #date { margin-top:2vh; font-size:5vh; opacity:.7; }
+  #date { margin-top:2vh; font-size:min(4.5vh,3vw); opacity:.7; text-align:center; }
   .style-2 #date { display:none; }
+
+  /* Calendar widget */
+  #calWrap { text-align:left; }
+  #monthName { font-size:6.5vh; font-weight:700; letter-spacing:.02em; margin-bottom:2vh; }
+  #grid { display:grid; grid-template-columns:repeat(7, 9vh); grid-auto-rows:9vh;
+    font-size:5.2vh; font-weight:600; text-align:center; align-items:center; justify-items:center; }
+  #grid > div { width:8vh; height:8vh; display:flex; align-items:center; justify-content:center; }
+  #grid .h { opacity:.5; font-size:4.6vh; }
+  #grid > div:nth-child(7n+1), #grid > div:nth-child(7n) { opacity:.5; }
+  #grid .today { background:var(--fg); color:#000; border-radius:50%; opacity:1 !important; }
 
   /* Photos */
   #photo { position:absolute; inset:0; width:100%; height:100%;
     object-fit:cover; opacity:0; transition:opacity 1.2s; }
   #photo.show { opacity:1; }
   #photoMsg { opacity:.6; font-size:4vh; }
-
-  /* Calendar */
-  #cal { display:flex; align-items:center; gap:6vw; }
-  #bigday { font-size:45vh; font-weight:700; line-height:1; color:var(--accent); }
-  #monthName { font-size:6vh; font-weight:600; text-align:left; margin-bottom:1vh; }
-  #grid { display:grid; grid-template-columns:repeat(7,7vh); gap:.8vh;
-    font-size:3.6vh; text-align:center; }
-  #grid .h { opacity:.5; font-size:2.8vh; }
-  #grid .today { background:var(--accent); color:#000; border-radius:50%; font-weight:700; }
 
   /* UI */
   #bar { position:fixed; bottom:2vh; left:50%; transform:translateX(-50%);
@@ -61,7 +65,19 @@
   #start small { opacity:.5; font-size:14px; }
   #rotate { display:none; position:fixed; top:8px; width:100%; text-align:center;
     font-size:13px; opacity:.5; z-index:6; }
-  @media (orientation:portrait) { #rotate { display:block; } }
+
+  /* Portrait fallback: stack clock above calendar */
+  @media (orientation:portrait) {
+    #rotate { display:block; }
+    #combo { flex-direction:column; gap:4vh; }
+    #analog { width:70vw; height:70vw; }
+    #digital { font-size:26vw; }
+    #stacked { font-size:30vw; }
+    #monthName { font-size:6vw; margin-bottom:1vh; }
+    #grid { grid-template-columns:repeat(7, 10vw); grid-auto-rows:7vw; font-size:4vw; }
+    #grid > div { width:7vw; height:7vw; }
+    #grid .h { font-size:3.6vw; }
+  }
 </style>
 </head>
 <body>
@@ -71,42 +87,43 @@
   <small>Plug in your phone and rotate to landscape</small>
 </div>
 <div id="rotate">Rotate to landscape for best results</div>
-<div id="dots"><i class="on"></i><i></i><i></i></div>
+<div id="dots"><i class="on"></i><i></i></div>
 
 <div id="stage">
   <div id="track">
-    <section class="panel"><div class="inner" id="clockInner">
-      <div id="digital">--:--</div>
-      <div id="stacked"><span>--</span><span>--</span></div>
-      <svg id="analog" viewBox="-100 -100 200 200">
-        <g id="ticks"></g>
-        <g id="nums"></g>
-        <g id="hh" stroke="currentColor" stroke-linecap="round">
-          <line x1="0" y1="0" x2="0" y2="-20" stroke-width="2.5"/>
-          <line x1="0" y1="-18" x2="0" y2="-46" stroke-width="7"/>
-        </g>
-        <g id="mh" stroke="currentColor" stroke-linecap="round">
-          <line x1="0" y1="0" x2="0" y2="-22" stroke-width="2.5"/>
-          <line x1="0" y1="-20" x2="0" y2="-78" stroke-width="5.5"/>
-        </g>
-        <g id="sh" stroke="currentColor" stroke-linecap="round">
-          <line x1="0" y1="14" x2="0" y2="-84" stroke-width="1.5" opacity=".75"/>
-        </g>
-        <circle r="5.5" fill="#000" stroke="currentColor" stroke-width="2.5"/>
-        <circle r="1.5" fill="currentColor"/>
-      </svg>
-      <div id="date"></div>
+    <section class="panel"><div class="inner" id="combo">
+      <div id="clockWrap" class="style-2">
+        <div id="digital">--:--</div>
+        <div id="stacked"><span>--</span><span>--</span></div>
+        <svg id="analog" viewBox="-100 -100 200 200">
+          <g id="ticks"></g>
+          <g id="nums"></g>
+          <g id="hh" stroke="currentColor" stroke-linecap="round">
+            <line x1="0" y1="0" x2="0" y2="-20" stroke-width="2.5"/>
+            <line x1="0" y1="-18" x2="0" y2="-46" stroke-width="7"/>
+          </g>
+          <g id="mh" stroke="currentColor" stroke-linecap="round">
+            <line x1="0" y1="0" x2="0" y2="-22" stroke-width="2.5"/>
+            <line x1="0" y1="-20" x2="0" y2="-78" stroke-width="5.5"/>
+          </g>
+          <g id="sh" stroke="currentColor" stroke-linecap="round">
+            <line x1="0" y1="14" x2="0" y2="-84" stroke-width="1.5" opacity=".75"/>
+          </g>
+          <circle r="5.5" fill="#000" stroke="currentColor" stroke-width="2.5"/>
+          <circle r="1.5" fill="currentColor"/>
+        </svg>
+        <div id="date"></div>
+      </div>
+      <div id="calWrap">
+        <div id="monthName"></div>
+        <div id="grid"></div>
+      </div>
     </div></section>
 
     <section class="panel">
       <img id="photo" alt="">
       <div id="photoMsg">Tap, then "Photos" to add pictures</div>
     </section>
-
-    <section class="panel"><div class="inner" id="cal">
-      <div id="bigday"></div>
-      <div><div id="monthName"></div><div id="grid"></div></div>
-    </div></section>
   </div>
 </div>
 
@@ -124,7 +141,7 @@ const store = {
   set:(k,v)=>{ try { localStorage.setItem(k,v) } catch {} }
 };
 
-// Default clock style: 0 = digital, 1 = stacked, 2 = analog
+// Clock style: 0 = digital, 1 = stacked, 2 = analog (default)
 let idx = 0, style = +store.get('style',2), nightMode = store.get('night','auto');
 let wake = null, photos = [], pi = 0;
 
@@ -144,8 +161,8 @@ document.addEventListener('visibilitychange', () => {
 
 /* ---------- Swipe navigation ---------- */
 function go(i){
-  idx = Math.max(0, Math.min(2, i));
-  $('#track').style.transform = `translateX(${-idx * 100 / 3}%)`;
+  idx = Math.max(0, Math.min(1, i));
+  $('#track').style.transform = `translateX(${-idx * 50}%)`;
   document.querySelectorAll('#dots i').forEach((d,n)=>d.classList.toggle('on', n===idx));
 }
 let sx = null;
@@ -168,7 +185,7 @@ $('#stage').addEventListener('click', () => {
   hideT = setTimeout(()=>$('#bar').classList.remove('on'), 3500);
 });
 function applyStyle(){
-  $('#clockInner').className = 'inner style-' + style;
+  $('#clockWrap').className = 'style-' + style;
   store.set('style', style);
 }
 $('#bStyle').onclick = e => { e.stopPropagation(); style = (style+1)%3; applyStyle(); };
@@ -233,14 +250,15 @@ function tick(){
 /* ---------- Calendar ---------- */
 function buildCalendar(){
   const d = new Date(), y = d.getFullYear(), mo = d.getMonth();
-  $('#bigday').textContent = d.getDate();
-  $('#monthName').textContent = d.toLocaleDateString([], {month:'long', year:'numeric'});
+  $('#monthName').textContent = d.toLocaleDateString([], {month:'long'}).toUpperCase();
   const g = $('#grid'); g.innerHTML = '';
   'SMTWTFS'.split('').forEach(c => g.insertAdjacentHTML('beforeend', `<div class="h">${c}</div>`));
   const first = new Date(y, mo, 1).getDay(), days = new Date(y, mo+1, 0).getDate();
   for (let i = 0; i < first; i++) g.insertAdjacentHTML('beforeend','<div></div>');
   for (let n = 1; n <= days; n++)
     g.insertAdjacentHTML('beforeend', `<div class="${n===d.getDate()?'today':''}">${n}</div>`);
+  // Fill to 6 rows so the widget size never jumps between months
+  for (let i = first + days; i < 42; i++) g.insertAdjacentHTML('beforeend','<div></div>');
 }
 
 /* ---------- Photos ---------- */
@@ -259,7 +277,7 @@ setInterval(() => { if (photos.length > 1) { pi = (pi+1) % photos.length; showPh
 /* ---------- Burn-in drift ---------- */
 setInterval(() => {
   const dx = (Math.random()*24 - 12), dy = (Math.random()*24 - 12);
-  document.querySelectorAll('.inner').forEach(el => el.style.transform = `translate(${dx}px,${dy}px)`);
+  $('#combo').style.transform = `translate(${dx}px,${dy}px)`;
 }, 60000);
 
 /* ---------- Init ---------- */
